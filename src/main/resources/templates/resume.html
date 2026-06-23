@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>简历诊断</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f6f9; }
+        .container { max-width: 800px; margin: 30px auto; }
+        .card { border-radius: 16px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        .card-header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 16px 16px 0 0 !important; padding: 24px; }
+        .btn-gradient { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border: none; }
+        .btn-gradient:hover { color: white; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(79,172,254,0.4); }
+        .drop-zone { border: 2px dashed #ddd; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .drop-zone:hover { border-color: #4facfe; background: rgba(79,172,254,0.05); }
+        .drop-zone.dragover { border-color: #4facfe; background: rgba(79,172,254,0.1); }
+        .result-area { background: #f8f9fa; border-radius: 12px; padding: 20px; white-space: pre-wrap; line-height: 1.8; }
+        .loading { display: none; text-align: center; padding: 40px; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e9ecef; border-top: 4px solid #4facfe; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .file-name { color: #4facfe; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="mb-0">简历诊断与优化</h3>
+            <p class="mb-0 opacity-75">上传简历，AI 帮你诊断问题并提供优化建议</p>
+        </div>
+        <div class="card-body">
+            <!-- 上传区域 -->
+            <div id="uploadSection">
+                <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+                    <div style="font-size: 48px;">📤</div>
+                    <p class="mb-1"><strong>点击或拖拽上传简历</strong></p>
+                    <p class="text-muted small mb-0">支持 TXT、PDF、Word 格式（.docx / .doc）</p>
+                    <input type="file" id="fileInput" accept=".txt,.pdf,.docx,.doc" style="display: none;" onchange="handleFileSelect(this.files)">
+                </div>
+                <div id="fileInfo" style="display: none;" class="mt-2">
+                    <span>📎 已选择：<span id="fileName" class="file-name"></span></span>
+                    <button class="btn btn-primary btn-sm ms-2" onclick="uploadResume()">🚀 开始诊断</button>
+                    <button class="btn btn-outline-secondary btn-sm ms-1" onclick="clearFile()">取消</button>
+                </div>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p class="mt-3 text-muted">AI 正在分析简历中，请稍候（15-30秒）...</p>
+            </div>
+
+            <!-- 结果展示 -->
+            <div id="resultArea" style="display: none;" class="mt-3">
+                <div class="text-center mb-3">
+                    <div id="scoreDisplay" class="score-circle score-medium" style="width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin:0 auto;background:#fff3cd;color:#856404;">0</div>
+                    <small class="text-muted">简历综合评分</small>
+                </div>
+                <div id="diagnosisContent" class="result-area"></div>
+                <button class="btn btn-outline-primary mt-3" onclick="resetResume()">重新上传</button>
+            </div>
+
+            <hr class="mt-4">
+            <div class="d-flex gap-2">
+                <a href="/resume/history" class="btn btn-outline-secondary btn-sm">历史记录</a>
+                <a href="/videos" class="btn btn-outline-primary btn-sm">← 返回首页</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('请先登录！');
+        location.href = '/login';
+    }
+
+    let selectedFile = null;
+
+    function handleFileSelect(files) {
+        if (files.length > 0) {
+            selectedFile = files[0];
+            document.getElementById('fileName').textContent = selectedFile.name;
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('dropZone').style.display = 'none';
+        }
+    }
+
+    function clearFile() {
+        selectedFile = null;
+        document.getElementById('fileInfo').style.display = 'none';
+        document.getElementById('dropZone').style.display = 'block';
+        document.getElementById('fileInput').value = '';
+    }
+
+    function uploadResume() {
+        if (!selectedFile) {
+            alert('请先选择文件！');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('uploadSection').style.display = 'none';
+        document.getElementById('resultArea').style.display = 'none';
+
+        fetch('/resume/api/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            },
+            body: formData
+        })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                if (data.code === 200) {
+                    const record = data.data;
+                    const score = record.score || 60;
+                    document.getElementById('scoreDisplay').textContent = score;
+                    document.getElementById('scoreDisplay').className = 'score-circle ' +
+                        (score >= 80 ? 'score-high' : score >= 60 ? 'score-medium' : 'score-low');
+                    // 简单样式修复
+                    const el = document.getElementById('scoreDisplay');
+                    el.style.width = '80px';
+                    el.style.height = '80px';
+                    el.style.borderRadius = '50%';
+                    el.style.display = 'flex';
+                    el.style.alignItems = 'center';
+                    el.style.justifyContent = 'center';
+                    el.style.fontSize = '28px';
+                    el.style.fontWeight = '700';
+                    el.style.margin = '0 auto';
+                    el.style.background = score >= 80 ? '#d4edda' : score >= 60 ? '#fff3cd' : '#f8d7da';
+                    el.style.color = score >= 80 ? '#155724' : score >= 60 ? '#856404' : '#721c24';
+
+                    document.getElementById('diagnosisContent').innerHTML = formatMarkdown(record.diagnosis);
+                    document.getElementById('resultArea').style.display = 'block';
+                } else {
+                    alert('诊断失败：' + data.message);
+                    document.getElementById('uploadSection').style.display = 'block';
+                }
+            })
+            .catch(err => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('uploadSection').style.display = 'block';
+                alert('网络错误，请稍后重试');
+                console.error(err);
+            });
+    }
+
+    function resetResume() {
+        document.getElementById('resultArea').style.display = 'none';
+        document.getElementById('uploadSection').style.display = 'block';
+        clearFile();
+    }
+
+    function formatMarkdown(text) {
+        let html = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/### (.*?)\n/g, '<h5>$1</h5>')
+            .replace(/## (.*?)\n/g, '<h4>$1</h4>')
+            .replace(/# (.*?)\n/g, '<h3>$1</h3>')
+            .replace(/- (.*?)\n/g, '• $1<br>')
+            .replace(/\n/g, '<br>');
+        return html;
+    }
+
+    // 拖拽上传
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', function(e) {
+        this.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelect(files);
+        }
+    });
+</script>
+
+</body>
+</html>

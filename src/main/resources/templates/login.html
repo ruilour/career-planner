@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 职学 Career Academy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .login-card h2 {
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1e1f23;
+        }
+        .login-card .subtitle {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .form-control {
+            border-radius: 10px;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            transition: 0.2s;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .switch-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .switch-link:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e1f23;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="logo-text">🎓 职学</div>
+    <h2 id="formTitle">登录</h2>
+    <p class="subtitle" id="formSubtitle">登录你的账号，开始学习之旅</p>
+
+    <div id="errorMsg" class="alert alert-danger" style="display: none;"></div>
+    <div id="successMsg" class="alert alert-success" style="display: none;"></div>
+
+    <form id="loginForm" onsubmit="handleSubmit(event)">
+        <div class="mb-3">
+            <label class="form-label fw-semibold">用户名</label>
+            <input type="text" id="username" class="form-control" placeholder="请输入用户名" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-semibold">密码</label>
+            <input type="password" id="password" class="form-control" placeholder="请输入密码" required>
+        </div>
+        <div class="mb-3" id="emailGroup" style="display: none;">
+            <label class="form-label fw-semibold">邮箱</label>
+            <input type="email" id="email" class="form-control" placeholder="请输入邮箱（选填）">
+        </div>
+        <button type="submit" class="btn-login" id="submitBtn">登 录</button>
+    </form>
+
+    <div class="text-center mt-3">
+        <span id="switchText">还没有账号？</span>
+        <a href="javascript:void(0)" class="switch-link" onclick="toggleMode()" id="switchLink">立即注册</a>
+    </div>
+
+    <div class="text-center mt-3">
+        <a href="/videos" class="text-decoration-none" style="color: #6c757d; font-size: 14px;">← 回到首页</a>
+    </div>
+</div>
+
+<script>
+    let isLogin = true; // true=登录模式, false=注册模式
+
+    function toggleMode() {
+        isLogin = !isLogin;
+        const title = document.getElementById('formTitle');
+        const subtitle = document.getElementById('formSubtitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const switchText = document.getElementById('switchText');
+        const switchLink = document.getElementById('switchLink');
+        const emailGroup = document.getElementById('emailGroup');
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+
+        if (isLogin) {
+            title.innerText = '登录';
+            subtitle.innerText = '登录你的账号，开始学习之旅';
+            submitBtn.innerText = '登 录';
+            switchText.innerText = '还没有账号？';
+            switchLink.innerText = '立即注册';
+            emailGroup.style.display = 'none';
+            document.getElementById('email').required = false;
+        } else {
+            title.innerText = '注册';
+            subtitle.innerText = '创建你的账号，开启职业规划';
+            submitBtn.innerText = '注 册';
+            switchText.innerText = '已有账号？';
+            switchLink.innerText = '去登录';
+            emailGroup.style.display = 'block';
+            document.getElementById('email').required = false;
+        }
+    }
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+
+        if (!username || !password) {
+            errorMsg.innerText = '用户名和密码不能为空';
+            errorMsg.style.display = 'block';
+            return;
+        }
+
+        // 登录请求
+        const url = isLogin ? '/api/auth/login' : '/api/auth/register';
+        const params = isLogin
+            ? `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+            : `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&email=${encodeURIComponent(email || '')}`;
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = isLogin ? '登录中...' : '注册中...';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: params
+        })
+            .then(res => res.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerText = isLogin ? '登 录' : '注 册';
+
+                if (data.code === 200) {
+                    if (isLogin) {
+                        // 登录成功：保存 Token 到 localStorage
+                        localStorage.setItem('token', data.data.token);
+                        localStorage.setItem('username', data.data.username);
+                        localStorage.setItem('userId', data.data.userId);
+                        localStorage.setItem('vipStatus', data.data.vipStatus);
+                        localStorage.setItem('role', data.data.role);
+
+                        successMsg.innerText = '🎉 登录成功！即将跳转...';
+                        successMsg.style.display = 'block';
+
+                        setTimeout(() => {
+                            window.location.href = '/videos';
+                        }, 1000);
+                    } else {
+                        // 注册成功
+                        successMsg.innerText = '🎉 注册成功！请前往登录';
+                        successMsg.style.display = 'block';
+                        document.getElementById('username').value = '';
+                        document.getElementById('password').value = '';
+                        document.getElementById('email').value = '';
+                        // 自动切换到登录模式
+                        setTimeout(() => {
+                            if (!isLogin) toggleMode();
+                        }, 500);
+                    }
+                } else {
+                    errorMsg.innerText = data.message || '操作失败，请重试';
+                    errorMsg.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerText = isLogin ? '登 录' : '注 册';
+                errorMsg.innerText = '网络错误，请检查网络连接';
+                errorMsg.style.display = 'block';
+                console.error('Error:', err);
+            });
+    }
+</script>
+
+</body>
+</html>

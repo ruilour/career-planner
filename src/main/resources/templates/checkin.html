@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>每日打卡</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f6f9; }
+        .container { max-width: 600px; margin: 40px auto; }
+        .card { border-radius: 20px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.06); overflow: hidden; }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .card-header h2 { font-weight: 700; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 20px; }
+        .stat-item { text-align: center; background: #f8f9fa; padding: 16px; border-radius: 12px; }
+        .stat-item .number { font-size: 28px; font-weight: 700; color: #667eea; }
+        .stat-item .label { font-size: 12px; color: #6c757d; margin-top: 4px; }
+        .btn-checkin {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 14px 40px; border-radius: 30px;
+            font-size: 18px; font-weight: 600; width: 100%;
+            transition: 0.2s;
+        }
+        .btn-checkin:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); color: white; }
+        .btn-checkin:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .calendar { padding: 20px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .calendar-day {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 14px; background: #f1f3f4;
+        }
+        .calendar-day.checked { background: #667eea; color: white; }
+        .calendar-day.today { border: 2px solid #667eea; }
+        .calendar-day.empty { background: transparent; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 8px; }
+        .calendar-header span { text-align: center; font-size: 12px; color: #6c757d; font-weight: 600; }
+        .msg { padding: 12px 20px; border-radius: 12px; margin: 10px 20px; display: none; }
+        .msg.success { background: #d4edda; color: #155724; display: block; }
+        .msg.error { background: #f8d7da; color: #721c24; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h2>📅 每日打卡</h2>
+            <p class="mb-0 opacity-75">坚持学习，每天进步一点点</p>
+        </div>
+
+        <!-- 统计 -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-item">
+                <div class="number" id="totalDays">0</div>
+                <div class="label">总打卡天数</div>
+            </div>
+            <div class="stat-item">
+                <div class="number" id="monthDays">0</div>
+                <div class="label">本月打卡</div>
+            </div>
+            <div class="stat-item">
+                <div class="number" id="continuousDays">0</div>
+                <div class="label">连续打卡 🔥</div>
+            </div>
+        </div>
+
+        <!-- 消息 -->
+        <div id="msg" class="msg"></div>
+
+        <!-- 打卡按钮 -->
+        <div style="padding: 0 20px 20px;">
+            <button id="checkinBtn" class="btn-checkin" onclick="doCheckIn()">✅ 打卡</button>
+        </div>
+
+        <!-- 日历 -->
+        <div class="calendar">
+            <h6 class="text-center mb-3" id="monthTitle">2026年6月</h6>
+            <div class="calendar-header">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <div style="padding: 0 20px 20px; text-align: center;">
+            <a href="/videos" class="btn btn-outline-secondary btn-sm">← 回到首页</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('请先登录！');
+        location.href = '/login';
+    }
+
+    // ========== 加载统计数据 ==========
+    function loadStats() {
+        fetch('/api/checkin/stats', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.code === 200) {
+                    const stats = data.data;
+                    document.getElementById('totalDays').textContent = stats.totalDays || 0;
+                    document.getElementById('monthDays').textContent = stats.monthDays || 0;
+                    document.getElementById('continuousDays').textContent = stats.continuousDays || 0;
+                }
+            })
+            .catch(err => console.error('加载统计失败:', err));
+    }
+
+    // ========== 加载日历 ==========
+    function loadCalendar() {
+        fetch('/api/checkin/month', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.code === 200) {
+                    const records = data.data || [];
+                    const checkedDays = records.map(r => new Date(r.checkInDate).getDate());
+                    renderCalendar(checkedDays);
+                }
+            })
+            .catch(err => console.error('加载日历失败:', err));
+    }
+
+    // ========== 渲染日历 ==========
+    function renderCalendar(checkedDays) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const today = now.getDate();
+
+        document.getElementById('monthTitle').textContent = year + '年' + (month + 1) + '月';
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = '';
+        // 填充空白
+        for (let i = 0; i < firstDay; i++) {
+            html += '<div class="calendar-day empty"></div>';
+        }
+        // 填充日期
+        for (let d = 1; d <= daysInMonth; d++) {
+            let cls = 'calendar-day';
+            if (checkedDays.includes(d)) cls += ' checked';
+            if (d === today) cls += ' today';
+            html += `<div class="${cls}">${d}</div>`;
+        }
+        document.getElementById('calendarGrid').innerHTML = html;
+    }
+
+    // ========== 执行打卡 ==========
+    function doCheckIn() {
+        const btn = document.getElementById('checkinBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ 打卡中...';
+
+        fetch('/api/checkin/do', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                const msg = document.getElementById('msg');
+                if (data.success) {
+                    msg.className = 'msg success';
+                    msg.textContent = data.message + ' 连续打卡 ' + data.continuousDays + ' 天！';
+                    // 刷新数据
+                    loadStats();
+                    loadCalendar();
+                } else {
+                    msg.className = 'msg error';
+                    msg.textContent = data.message;
+                }
+                btn.disabled = false;
+                btn.textContent = '✅ 打卡';
+            })
+            .catch(err => {
+                console.error('打卡失败:', err);
+                const msg = document.getElementById('msg');
+                msg.className = 'msg error';
+                msg.textContent = '网络错误，请稍后重试';
+                btn.disabled = false;
+                btn.textContent = '✅ 打卡';
+            });
+    }
+
+    // ========== 页面加载 ==========
+    window.onload = function() {
+        loadStats();
+        loadCalendar();
+    };
+</script>
+
+</body>
+</html>

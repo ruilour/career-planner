@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>投稿新视频</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f6f9; }
+        .container { max-width: 700px; margin: 40px auto; }
+        .card { border-radius: 16px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px 16px 0 0 !important; padding: 20px; }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 5px;
+        }
+        .upload-area:hover { border-color: #667eea; background: rgba(102,126,234,0.04); }
+        .upload-area .file-info { display: none; margin-top: 10px; color: #667eea; font-weight: 500; }
+        .preview-img { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; display: none; }
+        .file-input { display: none; }
+        .btn-submit { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px; font-weight: 600; width: 100%; border-radius: 30px; }
+        .btn-submit:hover { color: white; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.4); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .progress-bar-container {
+            width: 100%;
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 10px;
+            margin-top: 12px;
+            display: none;
+            overflow: hidden;
+        }
+        .progress-bar-container .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="mb-0">📤 投稿新视频</h3>
+            <p class="mb-0 opacity-75">上传你的原创内容，审核通过后将在首页展示</p>
+        </div>
+        <div class="card-body">
+            <form id="submitForm" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">视频标题</label>
+                    <input type="text" id="title" class="form-control" placeholder="请输入视频标题" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">简介</label>
+                    <textarea id="description" class="form-control" rows="3" placeholder="简单描述一下视频内容"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">作者</label>
+                    <input type="text" id="author" class="form-control" placeholder="请输入作者名称" required>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">技能标签</label>
+                        <input type="text" id="skillTag" class="form-control" placeholder="如：Java">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">岗位标签</label>
+                        <input type="text" id="jobTag" class="form-control" placeholder="如：后端开发">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">观看权限</label>
+                    <select id="isVipOnly" class="form-select">
+                        <option value="0">免费</option>
+                        <option value="1">VIP专享</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">封面图片</label>
+                    <div class="upload-area" id="coverArea">
+                        <div>📷 点击选择封面图片</div>
+                        <div class="file-info" id="coverInfo"></div>
+                        <img id="coverPreview" class="preview-img" alt="封面预览">
+                        <input type="file" id="coverFile" class="file-input" accept="image/jpeg,image/png,image/gif,image/webp">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">视频文件</label>
+                    <div class="upload-area" id="videoArea">
+                        <div>🎬 点击选择视频文件</div>
+                        <div class="file-info" id="videoInfo"></div>
+                        <input type="file" id="videoFile" class="file-input" accept="video/mp4,video/avi,video/quicktime,video/webm">
+                    </div>
+                </div>
+                <div class="progress-bar-container" id="progressContainer">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <button type="button" class="btn-submit" id="submitBtn" onclick="submitVideo()">🚀 提交审核</button>
+                <div id="msg" class="mt-3"></div>
+            </form>
+            <hr class="mt-4">
+            <a href="/videos" class="btn btn-outline-secondary btn-sm">← 返回首页</a>
+        </div>
+    </div>
+</div>
+<script>
+    // ============================================================
+    // 完整投稿 JavaScript 逻辑（包含文件校验、进度条、提交）
+    // ============================================================
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('请先登录！');
+        location.href = '/login';
+    }
+
+    // ---- 封面选择 ----
+    document.getElementById('coverArea').addEventListener('click', function() {
+        document.getElementById('coverFile').click();
+    });
+    document.getElementById('coverFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const info = document.getElementById('coverInfo');
+            info.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+            info.style.display = 'block';
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const preview = document.getElementById('coverPreview');
+                preview.src = ev.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // ---- 视频选择 ----
+    document.getElementById('videoArea').addEventListener('click', function() {
+        document.getElementById('videoFile').click();
+    });
+    document.getElementById('videoFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const info = document.getElementById('videoInfo');
+            info.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+            info.style.display = 'block';
+        }
+    });
+
+    // ---- 提交函数（带校验和进度条） ----
+    function submitVideo() {
+        const title = document.getElementById('title').value.trim();
+        const description = document.getElementById('description').value.trim();
+        const author = document.getElementById('author').value.trim();
+        const skillTag = document.getElementById('skillTag').value.trim();
+        const jobTag = document.getElementById('jobTag').value.trim();
+        const isVipOnly = document.getElementById('isVipOnly').value;
+        const coverFile = document.getElementById('coverFile').files[0];
+        const videoFile = document.getElementById('videoFile').files[0];
+
+        // 必填校验
+        if (!title) { alert('请输入标题'); return; }
+        if (!author) { alert('请输入作者'); return; }
+        if (!coverFile) { alert('请选择封面图片'); return; }
+        if (!videoFile) { alert('请选择视频文件'); return; }
+
+        // 文件类型校验
+        const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedImageTypes.includes(coverFile.type)) {
+            alert('封面仅支持 JPG、PNG、GIF、WEBP 格式');
+            return;
+        }
+        const allowedVideoTypes = ['video/mp4', 'video/avi', 'video/quicktime', 'video/webm'];
+        if (!allowedVideoTypes.includes(videoFile.type)) {
+            alert('视频仅支持 MP4、AVI、MOV、WEBM 格式');
+            return;
+        }
+
+        // 文件大小校验（封面 5MB，视频 200MB）
+        const maxCoverSize = 5 * 1024 * 1024;
+        const maxVideoSize = 200 * 1024 * 1024;
+        if (coverFile.size > maxCoverSize) {
+            alert('封面图片不能超过 5MB');
+            return;
+        }
+        if (videoFile.size > maxVideoSize) {
+            alert('视频文件不能超过 200MB');
+            return;
+        }
+
+        // 构建 FormData
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description || '');
+        formData.append('author', author);
+        formData.append('skillTag', skillTag || '');
+        formData.append('jobTag', jobTag || '');
+        formData.append('isVipOnly', isVipOnly);
+        formData.append('coverFile', coverFile);
+        formData.append('videoFile', videoFile);
+
+        const btn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+
+        btn.disabled = true;
+        btn.textContent = '提交中...';
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        document.getElementById('msg').innerHTML = '';
+
+        // 使用 XMLHttpRequest 支持进度监控
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/submit', true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            btn.disabled = false;
+            btn.textContent = '🚀 提交审核';
+            progressContainer.style.display = 'none';
+            progressBar.style.width = '0%';
+
+            try {
+                const data = JSON.parse(xhr.responseText);
+                const msg = document.getElementById('msg');
+                if (data.code === 200) {
+                    msg.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                    // 清空表单
+                    document.getElementById('submitForm').reset();
+                    document.getElementById('coverInfo').style.display = 'none';
+                    document.getElementById('coverPreview').style.display = 'none';
+                    document.getElementById('videoInfo').style.display = 'none';
+                } else {
+                    msg.innerHTML = `<div class="alert alert-danger">${data.message || '提交失败，请重试'}</div>`;
+                }
+            } catch (e) {
+                document.getElementById('msg').innerHTML = `<div class="alert alert-danger">服务器响应异常，请重试</div>`;
+            }
+        };
+
+        xhr.onerror = function() {
+            btn.disabled = false;
+            btn.textContent = '🚀 提交审核';
+            progressContainer.style.display = 'none';
+            progressBar.style.width = '0%';
+            document.getElementById('msg').innerHTML = `<div class="alert alert-danger">网络错误，请检查连接后重试</div>`;
+        };
+
+        xhr.send(formData);
+    }
+</script>
+</body>
+</html>

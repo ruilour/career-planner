@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 历史记录中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f6f9; }
+        .container { max-width: 1200px; margin: 30px auto; }
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 30px 35px;
+            margin-bottom: 30px;
+        }
+        .page-header h2 { font-weight: 700; margin-bottom: 4px; }
+        .page-header p { opacity: 0.85; margin-bottom: 0; }
+        .tab-nav { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: white;
+            color: #6c757d;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .tab-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .tab-btn.active {
+            color: white;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.35);
+        }
+        .tab-btn .badge-count {
+            background: rgba(255,255,255,0.3);
+            padding: 1px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+        .tab-btn.active .badge-count { background: rgba(255,255,255,0.3); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .record-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+            transition: 0.2s;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .record-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateX(4px); }
+        .record-item .title { font-weight: 600; font-size: 15px; }
+        .record-item .meta { color: #6c757d; font-size: 13px; margin-top: 4px; }
+        .record-item .meta span { margin-right: 16px; }
+        .record-item .tag {
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .tag-plan { background: #e8f5e9; color: #2e7d32; }
+        .tag-recommend { background: #e3f2fd; color: #0d47a1; }
+        .tag-interview { background: #fce4ec; color: #c62828; }
+        .tag-resume { background: #fff3e0; color: #e65100; }
+        .score-badge {
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .score-high { background: #d4edda; color: #155724; }
+        .score-medium { background: #fff3cd; color: #856404; }
+        .score-low { background: #f8d7da; color: #721c24; }
+        .status-badge {
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .status-pending { background: #ffeaa7; color: #6c5200; }
+        .status-completed { background: #dfe6e9; color: #2d3436; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #6c757d; }
+        .empty-state .icon { font-size: 56px; margin-bottom: 12px; }
+        .empty-state h5 { font-weight: 600; }
+        .modal-content { border-radius: 16px; }
+        .modal-body { max-height: 70vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; }
+        .modal-body h3, .modal-body h4 { margin-top: 16px; margin-bottom: 8px; }
+        .modal-body ul { padding-left: 20px; }
+        .modal-body .content-box {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            line-height: 1.8;
+        }
+        .modal-body .info-box {
+            background: #f3f0ff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .modal-body .info-box span { margin-right: 16px; }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 8px;
+            opacity: 0.5;
+            transition: 0.2s;
+        }
+        .delete-btn:hover { opacity: 1; }
+        .no-select { user-select: none; }
+        .tab-stat {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+        .color-plan { border-left-color: #4CAF50; }
+        .color-recommend { border-left-color: #2196F3; }
+        .color-interview { border-left-color: #e91e63; }
+        .color-resume { border-left-color: #FF9800; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2>🤖 AI 历史记录中心</h2>
+                <p>查看所有 AI 生成的职业规划、推荐、面试和简历诊断记录</p>
+            </div>
+            <div>
+                <span class="tab-stat" id="totalCount">共 0 条记录</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 导航 -->
+    <div class="tab-nav">
+        <button class="tab-btn active" data-tab="all" onclick="switchTab('all')">
+            📊 全部 <span class="badge-count" id="countAll">0</span>
+        </button>
+        <button class="tab-btn" data-tab="plan" onclick="switchTab('plan')" style="border-left: 4px solid #4CAF50;">
+            📚 职业规划 <span class="badge-count" id="countPlan">0</span>
+        </button>
+        <button class="tab-btn" data-tab="recommend" onclick="switchTab('recommend')" style="border-left: 4px solid #2196F3;">
+            🧭 职业推荐 <span class="badge-count" id="countRecommend">0</span>
+        </button>
+        <button class="tab-btn" data-tab="interview" onclick="switchTab('interview')" style="border-left: 4px solid #e91e63;">
+            🎯 模拟面试 <span class="badge-count" id="countInterview">0</span>
+        </button>
+        <button class="tab-btn" data-tab="resume" onclick="switchTab('resume')" style="border-left: 4px solid #FF9800;">
+            📄 简历诊断 <span class="badge-count" id="countResume">0</span>
+        </button>
+    </div>
+
+    <!-- ===== Tab 内容：全部 ===== -->
+    <div id="tab-all" class="tab-content active">
+        <div id="listAll"></div>
+    </div>
+
+    <!-- ===== Tab 内容：职业规划 ===== -->
+    <div id="tab-plan" class="tab-content">
+        <div id="listPlan"></div>
+    </div>
+
+    <!-- ===== Tab 内容：职业推荐 ===== -->
+    <div id="tab-recommend" class="tab-content">
+        <div id="listRecommend"></div>
+    </div>
+
+    <!-- ===== Tab 内容：模拟面试 ===== -->
+    <div id="tab-interview" class="tab-content">
+        <div id="listInterview"></div>
+    </div>
+
+    <!-- ===== Tab 内容：简历诊断 ===== -->
+    <div id="tab-resume" class="tab-content">
+        <div id="listResume"></div>
+    </div>
+
+    <div class="mt-3">
+        <a href="/videos" class="btn btn-outline-secondary btn-sm">← 返回首页</a>
+    </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" id="modalHeader" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title" id="modalTitle">📝 详情</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div id="detailContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('请先登录！');
+        location.href = '/login';
+    }
+
+    let detailModal = null;
+    let allData = {};
+
+    // ========== 加载所有数据 ==========
+    function loadAllData() {
+        Promise.all([
+            fetch('/career/api/history', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json()),
+            fetch('/career-recommend/api/history', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json()),
+            fetch('/interview/api/history', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json()),
+            fetch('/resume/api/history', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json())
+        ])
+            .then(([planData, recommendData, interviewData, resumeData]) => {
+                allData = {
+                    plan: planData.code === 200 ? planData.data : [],
+                    recommend: recommendData.code === 200 ? recommendData.data : [],
+                    interview: interviewData.code === 200 ? interviewData.data : [],
+                    resume: resumeData.code === 200 ? resumeData.data : []
+                };
+                updateCounts();
+                renderAll();
+                renderPlan();
+                renderRecommend();
+                renderInterview();
+                renderResume();
+            })
+            .catch(err => {
+                console.error('加载数据失败:', err);
+                document.querySelectorAll('.tab-content .record-list').forEach(el => {
+                    el.innerHTML = '<div class="alert alert-danger">加载失败，请刷新重试</div>';
+                });
+            });
+    }
+
+    // ========== 更新计数 ==========
+    function updateCounts() {
+        const plan = allData.plan.length;
+        const recommend = allData.recommend.length;
+        const interview = allData.interview.length;
+        const resume = allData.resume.length;
+        const total = plan + recommend + interview + resume;
+
+        document.getElementById('countAll').textContent = total;
+        document.getElementById('countPlan').textContent = plan;
+        document.getElementById('countRecommend').textContent = recommend;
+        document.getElementById('countInterview').textContent = interview;
+        document.getElementById('countResume').textContent = resume;
+        document.getElementById('totalCount').textContent = '共 ' + total + ' 条记录';
+    }
+
+    // ========== 渲染全部 ==========
+    function renderAll() {
+        const items = [
+            ...allData.plan.map(d => ({ ...d, type: 'plan' })),
+            ...allData.recommend.map(d => ({ ...d, type: 'recommend' })),
+            ...allData.interview.map(d => ({ ...d, type: 'interview' })),
+            ...allData.resume.map(d => ({ ...d, type: 'resume' }))
+        ].sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+
+        document.getElementById('listAll').innerHTML = renderItems(items, 'all');
+    }
+
+    // ========== 渲染列表项 ==========
+    function renderItems(data, type) {
+        if (!data || data.length === 0) {
+            const icons = {
+                plan: '📚', recommend: '🧭', interview: '🎯', resume: '📄', all: '🤖'
+            };
+            const titles = {
+                plan: '还没有职业规划记录', recommend: '还没有职业推荐记录',
+                interview: '还没有模拟面试记录', resume: '还没有简历诊断记录',
+                all: '还没有任何 AI 记录'
+            };
+            const descs = {
+                plan: '去生成你的第一份职业规划吧！',
+                recommend: '去获取 AI 职业推荐吧！',
+                interview: '去试试模拟面试吧！',
+                resume: '去上传简历诊断吧！',
+                all: '开始使用 AI 功能，生成你的第一条记录！'
+            };
+            const links = {
+                plan: '/career/plan', recommend: '/career-recommend',
+                interview: '/interview', resume: '/resume',
+                all: '/career/plan'
+            };
+            return `
+            <div class="empty-state">
+                <div class="icon">${icons[type]}</div>
+                <h5>${titles[type]}</h5>
+                <p class="text-muted">${descs[type]}</p>
+                <a href="${links[type]}" class="btn btn-primary btn-sm">去生成</a>
+            </div>
+        `;
+        }
+
+        return data.map(item => {
+            // ✅ 关键修复：使用 item.type 来确定显示什么标签，而不是传入的 type
+            const actualType = item.type || type;
+
+            // ✅ 每个类型独立映射，不包括 'all'
+            const typeMap = {
+                plan: { label: '📚 职业规划', cls: 'tag-plan', border: 'color-plan' },
+                recommend: { label: '🧭 职业推荐', cls: 'tag-recommend', border: 'color-recommend' },
+                interview: { label: '🎯 模拟面试', cls: 'tag-interview', border: 'color-interview' },
+                resume: { label: '📄 简历诊断', cls: 'tag-resume', border: 'color-resume' }
+            };
+
+            // 如果 actualType 是 'all'，说明数据本身没有 type，使用默认
+            const info = typeMap[actualType] || typeMap.plan;
+
+            let title = '';
+            let meta = '';
+            let rightBadge = '';
+
+            switch (actualType) {
+                case 'plan':
+                    title = '📋 ' + (item.jobName || '未命名');
+                    meta = `🏷️ ${item.jobName || '未命名'}`;
+                    break;
+                case 'recommend':
+                    title = '🎯 ' + (item.jobTarget || '未命名');
+                    const skills = item.currentSkills || '未填写';
+                    meta = `🛠️ ${skills} · ${item.experienceYears || 0}年经验 · 🎓 ${item.education || '未填'}`;
+                    break;
+                case 'interview':
+                    title = '💼 ' + (item.jobPosition || '未命名');
+                    const statusCls = item.status === 'pending' ? 'status-pending' : 'status-completed';
+                    const statusText = item.status === 'pending' ? '⏳ 待回答' : '✅ 已完成';
+                    const scoreText = item.score ? item.score + '分' : '未评分';
+                    const scoreCls = item.score >= 80 ? 'score-high' : item.score >= 60 ? 'score-medium' : 'score-low';
+                    meta = `📊 难度: ${item.difficulty || '未设置'}`;
+                    rightBadge = `
+                    <span class="status-badge ${statusCls}">${statusText}</span>
+                    <span class="score-badge ${scoreCls} ms-1">${scoreText}</span>
+                `;
+                    break;
+                case 'resume':
+                    title = '📎 ' + (item.fileName || '未命名');
+                    const rScoreCls = item.score >= 80 ? 'score-high' : item.score >= 60 ? 'score-medium' : 'score-low';
+                    const rScoreText = item.score ? item.score + '分' : '未评分';
+                    meta = `📄 ${item.fileName || '未命名'}`;
+                    rightBadge = `<span class="score-badge ${rScoreCls}">${rScoreText}</span>`;
+                    break;
+                default:
+                    title = '📋 未知类型';
+                    meta = '';
+            }
+
+            const deleteBtn = `<button class="delete-btn" onclick="event.stopPropagation(); deleteRecord('${actualType}', ${item.id})" title="删除">✕</button>`;
+
+            return `
+            <div class="record-item ${info.border}" onclick="showDetail('${actualType}', ${item.id})">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div style="flex:1;">
+                        <div>
+                            <span class="tag ${info.cls}">${info.label}</span>
+                            <span class="title ms-2">${title}</span>
+                        </div>
+                        <div class="meta">
+                            <span>🕐 ${item.createTime || '未知时间'}</span>
+                            <span>${meta}</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        ${rightBadge}
+                        ${deleteBtn}
+                    </div>
+                </div>
+            </div>
+        `;
+        }).join('');
+    }
+    // ========== 渲染全部 ==========
+    function renderAll() {
+        const items = [
+            ...allData.plan.map(d => ({ ...d, type: 'plan' })),
+            ...allData.recommend.map(d => ({ ...d, type: 'recommend' })),
+            ...allData.interview.map(d => ({ ...d, type: 'interview' })),
+            ...allData.resume.map(d => ({ ...d, type: 'resume' }))
+        ].sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+
+        document.getElementById('listAll').innerHTML = renderItems(items, 'all');
+    }
+
+    // ========== 渲染列表项 ==========
+    function renderItems(data, type) {
+        if (!data || data.length === 0) {
+            const icons = {
+                plan: '📚', recommend: '🧭', interview: '🎯', resume: '📄', all: '🤖'
+            };
+            const titles = {
+                plan: '还没有职业规划记录', recommend: '还没有职业推荐记录',
+                interview: '还没有模拟面试记录', resume: '还没有简历诊断记录',
+                all: '还没有任何 AI 记录'
+            };
+            const descs = {
+                plan: '去生成你的第一份职业规划吧！',
+                recommend: '去获取 AI 职业推荐吧！',
+                interview: '去试试模拟面试吧！',
+                resume: '去上传简历诊断吧！',
+                all: '开始使用 AI 功能，生成你的第一条记录！'
+            };
+            const links = {
+                plan: '/career/plan', recommend: '/career-recommend',
+                interview: '/interview', resume: '/resume',
+                all: '/career/plan'
+            };
+            return `
+            <div class="empty-state">
+                <div class="icon">${icons[type]}</div>
+                <h5>${titles[type]}</h5>
+                <p class="text-muted">${descs[type]}</p>
+                <a href="${links[type]}" class="btn btn-primary btn-sm">去生成</a>
+            </div>
+        `;
+        }
+
+        return data.map(item => {
+            // ✅ 使用 item.type 来确定实际类型
+            const actualType = item.type || type;
+
+            // ✅ 只包含具体类型的映射，不包含 'all'
+            const typeMap = {
+                plan: { label: '📚 职业规划', cls: 'tag-plan', border: 'color-plan' },
+                recommend: { label: '🧭 职业推荐', cls: 'tag-recommend', border: 'color-recommend' },
+                interview: { label: '🎯 模拟面试', cls: 'tag-interview', border: 'color-interview' },
+                resume: { label: '📄 简历诊断', cls: 'tag-resume', border: 'color-resume' }
+            };
+
+            const info = typeMap[actualType] || typeMap.plan;
+
+            let title = '';
+            let meta = '';
+            let rightBadge = '';
+
+            switch (actualType) {
+                case 'plan':
+                    title = '📋 ' + (item.jobName || '未命名');
+                    meta = `🏷️ ${item.jobName || '未命名'}`;
+                    break;
+                case 'recommend':
+                    title = '🎯 ' + (item.jobTarget || '未命名');
+                    const skills = item.currentSkills || '未填写';
+                    meta = `🛠️ ${skills} · ${item.experienceYears || 0}年经验 · 🎓 ${item.education || '未填'}`;
+                    break;
+                case 'interview':
+                    title = '💼 ' + (item.jobPosition || '未命名');
+                    const statusCls = item.status === 'pending' ? 'status-pending' : 'status-completed';
+                    const statusText = item.status === 'pending' ? '⏳ 待回答' : '✅ 已完成';
+                    const scoreText = item.score ? item.score + '分' : '未评分';
+                    const scoreCls = item.score >= 80 ? 'score-high' : item.score >= 60 ? 'score-medium' : 'score-low';
+                    meta = `📊 难度: ${item.difficulty || '未设置'}`;
+                    rightBadge = `
+                    <span class="status-badge ${statusCls}">${statusText}</span>
+                    <span class="score-badge ${scoreCls} ms-1">${scoreText}</span>
+                `;
+                    break;
+                case 'resume':
+                    title = '📎 ' + (item.fileName || '未命名');
+                    const rScoreCls = item.score >= 80 ? 'score-high' : item.score >= 60 ? 'score-medium' : 'score-low';
+                    const rScoreText = item.score ? item.score + '分' : '未评分';
+                    meta = `📄 ${item.fileName || '未命名'}`;
+                    rightBadge = `<span class="score-badge ${rScoreCls}">${rScoreText}</span>`;
+                    break;
+                default:
+                    title = '📋 未知类型';
+                    meta = '';
+            }
+
+            const deleteBtn = `<button class="delete-btn" onclick="event.stopPropagation(); deleteRecord('${actualType}', ${item.id})" title="删除">✕</button>`;
+
+            return `
+            <div class="record-item ${info.border}" onclick="showDetail('${actualType}', ${item.id})">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div style="flex:1;">
+                        <div>
+                            <span class="tag ${info.cls}">${info.label}</span>
+                            <span class="title ms-2">${title}</span>
+                        </div>
+                        <div class="meta">
+                            <span>🕐 ${item.createTime || '未知时间'}</span>
+                            <span>${meta}</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        ${rightBadge}
+                        ${deleteBtn}
+                    </div>
+                </div>
+            </div>
+        `;
+        }).join('');
+    }
+    // ========== 渲染各分类 ==========
+    function renderPlan() {
+        document.getElementById('listPlan').innerHTML = renderItems(allData.plan, 'plan');
+    }
+    function renderRecommend() {
+        document.getElementById('listRecommend').innerHTML = renderItems(allData.recommend, 'recommend');
+    }
+    function renderInterview() {
+        document.getElementById('listInterview').innerHTML = renderItems(allData.interview, 'interview');
+    }
+    function renderResume() {
+        document.getElementById('listResume').innerHTML = renderItems(allData.resume, 'resume');
+    }
+
+
+
+    // ========== 查看详情 ==========
+    function showDetail(type, id) {
+        console.log('showDetail 被调用, type:', type, 'id:', id);
+        let url = '';
+        let title = '';
+        let headerColor = '';
+
+        switch (type) {
+            case 'plan':
+                url = '/career/api/detail/' + id;
+                title = '📚 职业规划详情';
+                headerColor = 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)';
+                break;
+            case 'recommend':
+                url = '/career-recommend/api/detail/' + id;
+                title = '🧭 职业推荐详情';
+                headerColor = 'linear-gradient(135deg, #2196F3 0%, #0D47A1 100%)';
+                break;
+            case 'interview':
+                url = '/interview/api/detail/' + id;
+                title = '🎯 模拟面试详情';
+                headerColor = 'linear-gradient(135deg, #e91e63 0%, #880E4F 100%)';
+                break;
+            case 'resume':
+                url = '/resume/api/detail/' + id;
+                title = '📄 简历诊断详情';
+                headerColor = 'linear-gradient(135deg, #FF9800 0%, #E65100 100%)';
+                break;
+            default:
+                alert('未知类型：' + type);
+                console.error('未知类型:', type);
+                return;
+        }
+
+        console.log('请求详情:', url);
+
+        fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log('详情返回:', data);
+                if (data.code === 200) {
+                    const item = data.data;
+                    let html = '';
+
+                    switch (type) {
+                        case 'plan':
+                            html = `
+                        <div class="info-box">
+                            <span><strong>🎯 目标岗位：</strong> ${item.jobName}</span>
+                            <span><strong>🕐 创建时间：</strong> ${item.createTime}</span>
+                        </div>
+                        <hr>
+                        <h6>📋 规划内容</h6>
+                        <div class="content-box">${formatMarkdown(item.steps)}</div>
+                    `;
+                            break;
+                        case 'recommend':
+                            html = `
+                        <div class="info-box">
+                            <span><strong>🎯 目标岗位：</strong> ${item.jobTarget}</span>
+                            <span><strong>📅 经验：</strong> ${item.experienceYears}年</span>
+                            <span><strong>🎓 学历：</strong> ${item.education || '未填写'}</span>
+                        </div>
+                        <div class="info-box" style="background:#f8f9fa;">
+                            <span><strong>🛠️ 当前技能：</strong> ${item.currentSkills || '未填写'}</span>
+                        </div>
+                        <hr>
+                        <h6>🤖 AI 职业推荐</h6>
+                        <div class="content-box">${formatMarkdown(item.recommendation)}</div>
+                    `;
+                            break;
+                        case 'interview':
+                            const scoreCls = item.score >= 80 ? 'score-high' : item.score >= 60 ? 'score-medium' : 'score-low';
+                            const statusText = item.status === 'pending' ? '⏳ 待回答' : '✅ 已完成';
+                            const statusCls = item.status === 'pending' ? 'status-pending' : 'status-completed';
+                            html = `
+                        <div class="info-box">
+                            <span><strong>💼 岗位：</strong> ${item.jobPosition}</span>
+                            <span><strong>📊 难度：</strong> ${item.difficulty}</span>
+                            <span><strong>🕐 时间：</strong> ${item.createTime}</span>
+                        </div>
+                        ${item.score ? `
+                        <div class="mb-3">
+                            <strong>📊 评分：</strong>
+                            <span class="score-badge ${scoreCls}">${item.score}分</span>
+                            <span class="status-badge ${statusCls} ms-2">${statusText}</span>
+                        </div>` : `
+                        <div class="mb-3">
+                            <span class="status-badge ${statusCls}">${statusText}</span>
+                        </div>`}
+                        <hr>
+                        <h6>📌 面试题</h6>
+                        <div class="content-box">${formatMarkdown(item.question)}</div>
+                        ${item.userAnswer ? `
+                            <hr>
+                            <h6>✍️ 你的回答</h6>
+                            <div class="content-box" style="background:#e8f5e9;">${item.userAnswer}</div>
+                        ` : '<hr><div class="alert alert-warning">⏳ 这道题你还没有回答</div>'}
+                        ${item.aiFeedback ? `
+                            <hr>
+                            <h6>🤖 AI 反馈与建议</h6>
+                            <div class="content-box" style="background:#f3e5f5;">${formatMarkdown(item.aiFeedback)}</div>
+                        ` : ''}
+                    `;
+                            break;
+                        case 'resume':
+                            const rScoreCls = item.score >= 80 ? 'score-high' : item.score >= 60 ? 'score-medium' : 'score-low';
+                            html = `
+                        <div class="info-box">
+                            <span><strong>📎 文件名：</strong> ${item.fileName}</span>
+                            <span><strong>🕐 时间：</strong> ${item.createTime}</span>
+                        </div>
+                        ${item.score ? `
+                        <div class="mb-3">
+                            <strong>📊 综合评分：</strong>
+                            <span class="score-badge ${rScoreCls}">${item.score}分</span>
+                        </div>` : ''}
+                        ${item.parsedContent ? `
+                            <hr>
+                            <h6>📄 简历内容</h6>
+                            <div class="content-box" style="max-height:200px;overflow-y:auto;font-size:14px;">${item.parsedContent}</div>
+                        ` : ''}
+                        ${item.diagnosis ? `
+                            <hr>
+                            <h6>🤖 AI 诊断与优化建议</h6>
+                            <div class="content-box">${formatMarkdown(item.diagnosis)}</div>
+                        ` : '<hr><div class="alert alert-warning">⏳ 诊断结果尚未生成</div>'}
+                    `;
+                            break;
+                        default:
+                            html = '<div class="alert alert-danger">未知数据类型</div>';
+                    }
+
+                    // 设置弹窗内容
+                    document.getElementById('modalTitle').textContent = title;
+                    document.getElementById('detailContent').innerHTML = html;
+
+                    // 修改弹窗头部颜色
+                    const header = document.getElementById('modalHeader');
+                    if (header) {
+                        header.style.background = headerColor;
+                    }
+
+                    // 显示弹窗（确保 Bootstrap Modal 正确初始化）
+                    if (!detailModal) {
+                        detailModal = new bootstrap.Modal(document.getElementById('detailModal'), {
+                            backdrop: true,
+                            keyboard: true
+                        });
+                    }
+                    detailModal.show();
+
+                } else {
+                    alert('加载详情失败：' + (data.message || '未知错误'));
+                }
+            })
+            .catch(err => {
+                console.error('加载详情失败:', err);
+                alert('加载详情失败，请检查网络或联系管理员');
+            });
+    }
+    // ========== 删除记录 ==========
+    function deleteRecord(type, id) {
+        if (!confirm('确定要删除这条记录吗？')) return;
+
+        let url = '';
+        switch (type) {
+            case 'plan': url = '/career/api/delete/' + id; break;
+            case 'recommend': url = '/career-recommend/api/delete/' + id; break;
+            case 'interview': url = '/interview/api/delete/' + id; break;
+            case 'resume': url = '/resume/api/delete/' + id; break;
+            default: return;
+        }
+
+        fetch(url, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.code === 200) {
+                    alert('删除成功');
+                    loadAllData(); // 重新加载
+                } else {
+                    alert('删除失败：' + data.message);
+                }
+            })
+            .catch(err => {
+                alert('删除失败，请重试');
+                console.error(err);
+            });
+    }
+
+    // ========== Tab 切换 ==========
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+
+        document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    // ========== Markdown 格式化 ==========
+    function formatMarkdown(text) {
+        if (!text) return '';
+        let html = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/### (.*?)\n/g, '<h5>$1</h5>')
+            .replace(/## (.*?)\n/g, '<h4>$1</h4>')
+            .replace(/# (.*?)\n/g, '<h3>$1</h3>')
+            .replace(/- (.*?)\n/g, '• $1<br>')
+            .replace(/\n/g, '<br>');
+        return html;
+    }
+
+    // ========== 页面加载 ==========
+    window.onload = function() {
+        loadAllData();
+    };
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>我的规划历史</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card { border-radius: 12px; transition: 0.2s; margin-bottom: 16px; }
+        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .job-tag { background: #667eea; color: white; padding: 2px 12px; border-radius: 20px; font-size: 13px; }
+        .plan-preview { color: #6c757d; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .btn-sm { border-radius: 20px; }
+    </style>
+</head>
+<body>
+<div class="container" style="max-width: 800px; margin: 30px auto;">
+    <h3 class="mb-4">📋 我的职业规划历史</h3>
+    <div id="historyList"></div>
+    <a href="/career/plan" class="btn btn-primary mt-3">← 返回规划页面</a>
+    <a href="/videos" class="btn btn-outline-secondary mt-3 ms-2">回到首页</a>
+</div>
+
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('请先登录！');
+        location.href = '/videos';
+    }
+
+    fetch('/career/api/history', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.code === 200) {
+                const list = data.data;
+                const container = document.getElementById('historyList');
+                if (!list || list.length === 0) {
+                    container.innerHTML = '<div class="alert alert-info">暂无规划记录，去生成你的第一个职业规划吧！</div>';
+                    return;
+                }
+                let html = '';
+                list.forEach(item => {
+                    // 截取前200字作为预览
+                    const preview = item.steps ? item.steps.substring(0, 200) + '...' : '';
+                    html += `
+                    <div class="card p-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="mb-1">🎯 <span class="job-tag">${item.jobName}</span></h5>
+                                <small class="text-muted">${item.createTime}</small>
+                            </div>
+                            <button onclick="deletePlan(${item.id})" class="btn btn-outline-danger btn-sm">删除</button>
+                        </div>
+                        <div class="plan-preview mt-2">${preview}</div>
+                        <button onclick="viewPlan(${item.id}, '${item.jobName}', '${encodeURIComponent(item.steps)}')" class="btn btn-outline-primary btn-sm mt-2">查看完整规划</button>
+                    </div>
+                `;
+                });
+                container.innerHTML = html;
+            }
+        });
+
+    function viewPlan(id, jobName, stepsEncoded) {
+        const steps = decodeURIComponent(stepsEncoded);
+        // 弹窗显示完整内容
+        const win = window.open('', '_blank', 'width=800,height=600');
+        win.document.write(`
+            <html><head><title>${jobName} - 规划详情</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>body { padding: 30px; } pre { white-space: pre-wrap; line-height: 1.8; }</style>
+            </head><body>
+            <h3>🎯 ${jobName}</h3>
+            <hr>
+            <pre>${steps}</pre>
+            <button onclick="window.close()" class="btn btn-secondary mt-3">关闭</button>
+            </body></html>
+        `);
+        win.document.close();
+    }
+
+    function deletePlan(planId) {
+        if (!confirm('确定删除这条规划记录吗？')) return;
+        fetch('/career/api/delete/' + planId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if (data.code === 200) location.reload();
+            });
+    }
+</script>
+</body>
+</html>

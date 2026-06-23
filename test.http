@@ -1,0 +1,42 @@
+### 注册
+POST http://localhost:8080/api/auth/register
+Content-Type: application/x-www-form-urlencoded
+
+username=lisi&password=123456&email=lisi@qq.com
+
+
+### 登录
+POST http://localhost:8080/api/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=zhangsan&password=123456
+### 需要携带Token访问的接口
+GET http://localhost:8080/api/test/hello
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIiwidXNlcm5hbWUiOiJ6aGFuZ3NhbiIsImlhdCI6MTc4MTc1MTY1MiwiZXhwIjoxNzgyMzU2NDUyfQ.-GmlgG23mR8uFPwVnI223kE1qJfIpaEd_Nq2RIvdHVc
+
+### 测试注册
+POST http://localhost:8080/api/auth/register
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser&password=123456&email=test@qq.com
+
+### 测试登录
+# @no-cookie-jar
+POST http://localhost:8080/api/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser&password=123456
+
+### 管理员登录（获取 token）
+POST http://localhost:8080/api/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=admin&password=admin123
+
+### 审核通过（替换 token 和视频 ID）
+POST http://localhost:8080/admin/api/approve/1
+Authorization: Bearer 这里填你登录获取的token
+
+### 审核驳回（替换 token 和视频 ID）
+POST http://localhost:8080/admin/api/reject/1?reason=内容不符合要求
+Authorization: Bearer 这里填你登录获取的token

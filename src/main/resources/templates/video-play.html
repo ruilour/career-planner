@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23667eea'/></svg>">
+    <meta charset="UTF-8">
+    <title th:text="${video.title}">视频播放</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f0f0f; color: white; }
+        .video-container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        video { width: 100%; border-radius: 12px; background: #000; }
+        .video-info { margin-top: 20px; }
+        .video-title { font-size: 24px; font-weight: 700; }
+        .video-meta { color: #aaa; font-size: 14px; margin-top: 8px; }
+        .video-meta span { margin-right: 12px; }
+        .vip-lock {
+            background: rgba(251, 114, 153, 0.15);
+            border: 2px solid #fb7299;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .vip-lock h3 { color: #fb7299; }
+        .btn-vip { background: #fb7299; color: white; border: none; padding: 12px 40px; border-radius: 30px; font-weight: 600; }
+        .btn-vip:hover { background: #e05a7e; color: white; }
+        .back-link { color: #667eea; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .favorite-btn {
+            background: none;
+            border: 2px solid #555;
+            color: #aaa;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        .favorite-btn:hover { border-color: #fb7299; color: #fb7299; }
+        .favorite-btn.active { border-color: #fb7299; color: #fb7299; background: rgba(251, 114, 153, 0.1); }
+        .favorite-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="video-container">
+    <!-- 视频播放器 -->
+    <div th:if="${canWatch}">
+        <video controls autoplay>
+            <source th:src="${video.videoUrl}" type="video/mp4">
+            您的浏览器不支持视频播放
+        </video>
+    </div>
+
+    <!-- VIP 锁定提示 -->
+    <div th:if="${!canWatch}" class="vip-lock">
+        <div style="font-size: 64px;">🔒</div>
+        <h3>VIP 专属内容</h3>
+        <p style="color: #aaa;">该视频仅限 VIP 会员观看</p>
+        <button class="btn-vip" onclick="window.location.href='/videos'">💎 去开通 VIP</button>
+    </div>
+
+    <!-- 视频信息 -->
+    <div class="video-info">
+        <div class="d-flex justify-content-between align-items-start flex-wrap">
+            <div>
+                <div class="video-title" th:text="${video.title}">视频标题</div>
+                <div class="video-meta">
+                    <span th:text="'👤 ' + ${video.author}">作者</span>
+                    <span th:text="'🏷️ ' + ${video.skillTag}">技能</span>
+                    <span th:text="'💼 ' + ${video.jobTag}">岗位</span>
+                    <span th:text="'👁️ ' + ${video.viewCount} + ' 次播放'">观看数</span>
+                    <span id="favoriteCountDisplay" th:text="'❤️ ' + ${video.favoriteCount} + ' 收藏'">收藏数</span>
+                    <span th:if="${video.isVipOnly == 1}" style="color: #fb7299;">🔒 VIP专享</span>
+                    <span th:if="${video.isVipOnly == 0}" style="color: #4CAF50;">🔓 免费</span>
+                </div>
+            </div>
+            <button id="favoriteBtn" class="favorite-btn" onclick="toggleFavorite()">
+                🤍 收藏
+            </button>
+        </div>
+        <p style="color: #aaa; margin-top: 12px;" th:text="${video.description}">简介</p>
+        <a href="/videos" class="back-link">← 返回列表</a>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // ✅ 使用 Thymeleaf 内联 JavaScript 获取视频 ID
+    const videoId = /*[[${video.id}]]*/ 0;
+    const token = localStorage.getItem('token');
+
+    console.log('🎬 当前视频ID:', videoId, '类型:', typeof videoId);
+    console.log('🔑 Token状态:', token ? '已登录' : '未登录');
+
+    // ========== 页面加载时检查收藏状态 ==========
+    window.onload = function() {
+        // ✅ 验证 videoId 是否有效
+        const id = parseInt(videoId);
+        if (isNaN(id) || id <= 0) {
+            console.error('❌ 视频ID无效:', videoId);
+            const btn = document.getElementById('favoriteBtn');
+            btn.disabled = true;
+            btn.innerHTML = '⚠️ 加载失败';
+            return;
+        }
+
+        if (!token) {
+            const btn = document.getElementById('favoriteBtn');
+            btn.disabled = true;
+            btn.innerHTML = '🔒 登录后收藏';
+            return;
+        }
+
+        // ✅ 使用 id 变量
+        console.log('🔍 正在检查收藏状态, videoId:', id);
+
+        fetch('/api/favorite/check?videoid=' + id, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        })
+            .then(function(res) {
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                return res.json();
+            })
+            .then(function(data) {
+                console.log('📊 收藏检查结果:', data);
+                const btn = document.getElementById('favoriteBtn');
+                if (data.code === 200 && data.favorited) {
+                    btn.classList.add('active');
+                    btn.innerHTML = '❤️ 已收藏';
+                } else {
+                    btn.classList.remove('active');
+                    btn.innerHTML = '🤍 收藏';
+                }
+                if (data.favoriteCount !== undefined) {
+                    document.getElementById('favoriteCountDisplay').textContent = '❤️ ' + data.favoriteCount + ' 收藏';
+                }
+            })
+            .catch(function(err) {
+                console.error('❌ 检查收藏状态失败:', err);
+                const btn = document.getElementById('favoriteBtn');
+                btn.innerHTML = '🤍 收藏';
+            });
+    };
+
+    // ========== 切换收藏 ==========
+    function toggleFavorite() {
+        // ✅ 使用 parseInt 确保是数字
+        const id = parseInt(videoId);
+        if (isNaN(id) || id <= 0) {
+            alert('无法获取视频信息，请刷新页面重试');
+            return;
+        }
+
+        if (!token) {
+            alert('请先登录！');
+            return;
+        }
+
+        const btn = document.getElementById('favoriteBtn');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ 处理中...';
+
+        var formData = new URLSearchParams();
+        formData.append('videoId', id);
+
+        // ✅ 打印请求参数确认
+        console.log('📤 发送收藏请求, videoId:', id);
+        console.log('📤 请求数据:', formData.toString());
+
+        fetch('/api/favorite/toggle', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        })
+            .then(function(res) {
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                return res.json();
+            })
+            .then(function(data) {
+                console.log('📊 收藏操作结果:', data);
+                btn.disabled = false;
+
+                if (data.code === 200) {
+                    if (data.favorited) {
+                        btn.classList.add('active');
+                        btn.innerHTML = '❤️ 已收藏';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.innerHTML = '🤍 收藏';
+                    }
+                    if (data.favoriteCount !== undefined) {
+                        document.getElementById('favoriteCountDisplay').textContent = '❤️ ' + data.favoriteCount + ' 收藏';
+                    }
+                    // 延迟刷新页面
+                    setTimeout(function() {
+                        location.reload();
+                    }, 600);
+                } else {
+                    alert('操作失败：' + (data.message || '未知错误'));
+                    btn.innerHTML = '🤍 收藏';
+                }
+            })
+            .catch(function(err) {
+                console.error('❌ 收藏操作失败:', err);
+                alert('网络错误，请稍后重试');
+                btn.disabled = false;
+                btn.innerHTML = '🤍 收藏';
+            });
+    }
+</script>
+
+</body>
+</html>
