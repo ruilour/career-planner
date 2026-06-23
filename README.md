@@ -29,6 +29,6 @@
 ### Docker 一键部署
 
 ```bash
-git clone https://github.com/你的用户名/career-planner.git
+git clone https://github.com/ruilour/career-planner.git
 cd career-planner
 docker compose up -d --build
