@@ -11,7 +11,7 @@ COLLATE utf8mb4_unicode_ci;
 USE career_planner;
 
 -- =============================================
--- 2. 用户表
+-- 2. 用户表（已添加 status 字段）
 -- =============================================
 CREATE TABLE IF NOT EXISTS `sys_user` (
                                           `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户ID',
@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     `password` VARCHAR(255) NOT NULL COMMENT '密码（加密）',
     `email` VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
     `role` VARCHAR(20) DEFAULT 'USER' COMMENT '角色：USER/ADMIN',
+    `status` VARCHAR(20) DEFAULT 'PENDING' COMMENT '用户状态：PENDING-待审核，APPROVED-已通过，REJECTED-已驳回',
     `vip_status` TINYINT DEFAULT 0 COMMENT 'VIP状态：0-普通，1-VIP',
     `vip_expire_date` DATETIME DEFAULT NULL COMMENT 'VIP到期时间',
     `avatar` VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
@@ -179,13 +180,12 @@ CREATE TABLE IF NOT EXISTS `resume_record` (
 -- 11. 插入管理员账号
 -- =============================================
 -- 管理员：admin / 密码：admin123（BCrypt加密）
-INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `email`)
-VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKDO1XHG', 'ADMIN', 'admin@careerplanner.com');
+INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `email`, `status`)
+VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKDO1XHG', 'ADMIN', 'admin@careerplanner.com', 'APPROVED');
 
 -- =============================================
 -- 12. 插入示例数据（可选，方便测试）
 -- =============================================
--- 插入示例视频
 INSERT IGNORE INTO `video` (`title`, `description`, `author`, `skill_tag`, `job_tag`, `status`, `upload_user_id`) VALUES
 ('Spring Boot 3 快速入门', '从零开始学习 Spring Boot 3，手把手搭建企业级应用', '技术小课堂', 'Java', '后端开发', 'APPROVED', 1),
 ('Redis 实战指南', 'Redis 缓存、分布式锁、消息队列实战', '数据库大咖', 'Redis', '后端开发', 'APPROVED', 1),
@@ -193,8 +193,8 @@ INSERT IGNORE INTO `video` (`title`, `description`, `author`, `skill_tag`, `job_
 ('MySQL 索引优化与执行计划', '深入理解 MySQL 索引原理，SQL 性能调优', 'DBA 之路', 'MySQL', '数据库开发', 'APPROVED', 1);
 
 -- 插入一个普通测试用户（密码：123456）
-INSERT IGNORE INTO `sys_user` (`username`, `password`, `email`, `role`)
-VALUES ('testuser', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKDO1XHG', 'test@test.com', 'USER');
+INSERT IGNORE INTO `sys_user` (`username`, `password`, `email`, `role`, `status`)
+VALUES ('testuser', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKDO1XHG', 'test@test.com', 'USER', 'APPROVED');
 
 -- =============================================
 -- 13. 验证
